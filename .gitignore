@@ -1,0 +1,13 @@
+.streamlit/secrets.toml
+.env
+*.env
+*.pem
+*.key
+__pycache__/
+*.pyc
+.transactions/
+.f1_source_backups/
+data/
+log/
+models/
+venv/
