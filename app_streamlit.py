@@ -3820,7 +3820,21 @@ with tabs[5]:
             "race_context_plausibility_ready",
         }
 
-        if snapshot_status not in (
+        if snapshot_status in {"predicted", "evaluated"}:
+            if existing_snapshot.strip().lower() in {
+                "", "nan", "none"
+            }:
+                st.error(
+                    "Historische race zonder geldige "
+                    "featuresnapshot. Controleer de audit."
+                )
+            else:
+                st.caption(
+                    "Snapshot is definitief vastgelegd; "
+                    "opnieuw bevriezen is niet toegestaan."
+                )
+
+        elif snapshot_status not in (
             allowed_snapshot_statuses
         ):
 
@@ -3940,74 +3954,51 @@ with tabs[5]:
 
     else:
 
-        eligibility_preview = (
-            canonical_build_prediction_readiness_report(
-                selected_year,
-                selected_slug,
-            )
-        )
-
-        if eligibility_preview.source_eligible:
-
-            st.success(
-                "Registry eligibility preview: ✅ source eligible"
-            )
-
+        if str(registry_test.loc[get_target_mask(registry_test, selected_year, selected_slug)].iloc[0].get("RaceStatus", "")).strip() in {"predicted", "evaluated"}:
+            st.success('Future Event Registry: historische registratiefase afgesloten.')
+            st.caption("Deze fase is afgerond. Nieuwe pre-raceacties ""zijn hier niet meer beschikbaar.")
         else:
-
-            st.warning(
-                "Registry eligibility preview: ⚠️ source nog niet eligible"
+            eligibility_preview = (
+                canonical_build_prediction_readiness_report(
+                    selected_year,
+                    selected_slug,
+                )
             )
 
-            for reason in eligibility_preview.blockers:
+            if eligibility_preview.source_eligible:
 
-                st.write(
-                    "•",
-                    reason,
+                st.success(
+                    "Registry eligibility preview: ✅ source eligible"
                 )
-
-        if st.button(
-            "Maak / update future event registry",
-            key="build_future_event_registry_button",
-        ):
-
-            try:
-
-                registry_result = (
-                    sync_event_registry(source_eligible=canonical_build_prediction_readiness_report(selected_year, selected_slug).source_eligible, year=selected_year, gp_slug=selected_slug)
-                )
-
-            except Exception as exc:
-
-                st.error(
-                    "Registry update geblokkeerd."
-                )
-
-                with st.expander(
-                    "Technische details",
-                    expanded=False,
-                ):
-                    st.code(
-                        str(exc)
-                    )
 
             else:
 
-                if (
-                    registry_result.registry_eligible
-                    == 1
-                ):
+                st.warning(
+                    "Registry eligibility preview: ⚠️ source nog niet eligible"
+                )
 
-                    st.success(
-                        "Registry bijgewerkt: "
-                        "RegistryEligible = 1"
+                for reason in eligibility_preview.blockers:
+
+                    st.write(
+                        "•",
+                        reason,
                     )
 
-                else:
+            if st.button(
+                "Maak / update future event registry",
+                key="build_future_event_registry_button",
+            ):
 
-                    st.warning(
-                        "Registry bijgewerkt, maar target "
-                        "is nog niet eligible."
+                try:
+
+                    registry_result = (
+                        sync_event_registry(source_eligible=canonical_build_prediction_readiness_report(selected_year, selected_slug).source_eligible, year=selected_year, gp_slug=selected_slug)
+                    )
+
+                except Exception as exc:
+
+                    st.error(
+                        "Registry update geblokkeerd."
                     )
 
                     with st.expander(
@@ -4015,23 +4006,50 @@ with tabs[5]:
                         expanded=False,
                     ):
                         st.code(
-                            registry_state_message(registry_result)
+                            str(exc)
                         )
 
-                st.write(
-                    "race_event_id:",
-                    registry_result.race_event_id,
-                )
+                else:
 
-                st.write(
-                    "Registry:",
-                    str(CONFIG.registry_path),
-                )
+                    if (
+                        registry_result.registry_eligible
+                        == 1
+                    ):
 
-                st.write(
-                    "Eligible registry:",
-                    str(CONFIG.registry_eligible_mirror_path),
-                )
+                        st.success(
+                            "Registry bijgewerkt: "
+                            "RegistryEligible = 1"
+                        )
+
+                    else:
+
+                        st.warning(
+                            "Registry bijgewerkt, maar target "
+                            "is nog niet eligible."
+                        )
+
+                        with st.expander(
+                            "Technische details",
+                            expanded=False,
+                        ):
+                            st.code(
+                                registry_state_message(registry_result)
+                            )
+
+                    st.write(
+                        "race_event_id:",
+                        registry_result.race_event_id,
+                    )
+
+                    st.write(
+                        "Registry:",
+                        str(CONFIG.registry_path),
+                    )
+
+                    st.write(
+                        "Eligible registry:",
+                        str(CONFIG.registry_eligible_mirror_path),
+                    )
 
 
 
@@ -4168,198 +4186,202 @@ with tabs[5]:
 
     else:
 
-        readiness_report = canonical_build_prediction_readiness_report(
-            selected_year,
-            selected_slug,
-        )
-
-        # ----------------------------------------------------
-        # Eén zichtbaar panel
-        # ----------------------------------------------------
-        for gate_key, gate in readiness_report.gates.items():
-
-            if gate.ok:
-
-                icon = "✅"
-                label = "OK"
-
-            else:
-
-                icon = "❌"
-                label = "BLOKKEERT"
-
-            st.markdown(
-                f"**{icon} {gate.name} — {label}**"
-            )
-
-            if not gate.ok:
-
-                st.caption(
-                    gate.detail
-                )
-
-        # ----------------------------------------------------
-        # Canonical readiness summary
-        # ----------------------------------------------------
-        if readiness_report.blockers:
-
-            st.error(
-                "❌ Prediction readiness geblokkeerd."
-            )
-
-            for blocker in readiness_report.blockers:
-
-                st.caption(
-                    blocker
-                )
-
+        if str(panel_test.loc[get_target_mask(panel_test, selected_year, selected_slug)].iloc[0].get("RaceStatus", "")).strip() in {"predicted", "evaluated"}:
+            st.success('Historische predictionfase: pre-race-readiness is afgesloten.')
+            st.caption("Deze fase is afgerond. Nieuwe pre-raceacties ""zijn hier niet meer beschikbaar.")
         else:
-
-            st.success(
-                "✅ Geen readiness blockers."
+            readiness_report = canonical_build_prediction_readiness_report(
+                selected_year,
+                selected_slug,
             )
 
-        st.caption(
-            "Registry aanwezig: "
-            f"{readiness_report.registry_present} | "
-            "Registry eligible: "
-            f"{readiness_report.registry_eligible}"
-        )
+            # ----------------------------------------------------
+            # Eén zichtbaar panel
+            # ----------------------------------------------------
+            for gate_key, gate in readiness_report.gates.items():
 
+                if gate.ok:
 
-        all_ready = bool(readiness_report.ok)
-
-        st.divider()
-
-        # ----------------------------------------------------
-        # Administratieve herstelacties
-        # ----------------------------------------------------
-        col1, col2, col3 = st.columns(
-            3
-        )
-
-        # STEP 10.2 UI CLEANUP — snapshot deduplicated
-        with col1:
-            st.caption(
-                "Feature snapshot wordt via de primaire "
-                "snapshot-control hierboven uitgevoerd."
-            )
-
-        with col2:
-
-            if st.button(
-                "Maak registry eligible",
-                key="readiness_registry_update",
-            ):
-
-                try:
-
-                    registry_result = (
-                        sync_event_registry(source_eligible=canonical_build_prediction_readiness_report(selected_year, selected_slug).source_eligible, year=selected_year, gp_slug=selected_slug)
-                    )
-
-                except Exception as exc:
-
-                    st.error(
-                        str(exc)
-                    )
+                    icon = "✅"
+                    label = "OK"
 
                 else:
 
-                    if (
-                        registry_result.registry_eligible
-                        == 1
-                    ):
+                    icon = "❌"
+                    label = "BLOKKEERT"
 
-                        st.success(
-                            "Registry eligible."
-                        )
-
-                    else:
-
-                        st.warning(
-                            registry_state_message(registry_result)
-                        )
-
-                    st.rerun()
-
-        with col3:
-
-            if st.button(
-                "Refresh readiness",
-                key="readiness_refresh",
-            ):
-
-                st.rerun()
-
-        st.info(
-            "Andere herstelacties: "
-            "Event timing → Nieuwe GP; "
-            "RecordLap / layout / identity → Circuit & regime; "
-            "weather → Race Weather; "
-            "plausibility → race-context plausibility."
-        )
-
-        # ----------------------------------------------------
-        # Definitieve prediction_ready bevestiging
-        # ----------------------------------------------------
-        if all_ready:
-
-            st.success(
-                "✅ Alle prediction-readiness gates zijn groen."
-            )
-
-        else:
-
-            st.warning(
-                "⚠️ prediction_ready blijft geblokkeerd "
-                "tot alle gates groen zijn."
-            )
-
-        confirm_ready = st.button(
-            "Bevestig prediction_ready",
-            key="confirm_prediction_ready_button",
-            disabled=not all_ready,
-        )
-
-        if confirm_ready:
-
-            try:
-
-                result = (
-                    prepare_prediction_ready(
-                        year=selected_year,
-                        gp_slug=selected_slug,
-                    )
+                st.markdown(
+                    f"**{icon} {gate.name} — {label}**"
                 )
 
-            except Exception as exc:
+                if not gate.ok:
+
+                    st.caption(
+                        gate.detail
+                    )
+
+            # ----------------------------------------------------
+            # Canonical readiness summary
+            # ----------------------------------------------------
+            if readiness_report.blockers:
 
                 st.error(
-                    "prediction_ready kon niet worden bevestigd."
+                    "❌ Prediction readiness geblokkeerd."
                 )
 
-                with st.expander(
-                    "Technische details",
-                    expanded=False,
-                ):
-                    st.code(
-                        str(exc)
+                for blocker in readiness_report.blockers:
+
+                    st.caption(
+                        blocker
                     )
 
             else:
 
                 st.success(
-                    "RaceStatus succesvol naar prediction_ready gezet "
-                    "in df_test en df_overview."
+                    "✅ Geen readiness blockers."
                 )
 
-                st.write(
-                    "RegistryEligible:",
-                    result.registry_eligible,
+            st.caption(
+                "Registry aanwezig: "
+                f"{readiness_report.registry_present} | "
+                "Registry eligible: "
+                f"{readiness_report.registry_eligible}"
+            )
+
+
+            all_ready = bool(readiness_report.ok)
+
+            st.divider()
+
+            # ----------------------------------------------------
+            # Administratieve herstelacties
+            # ----------------------------------------------------
+            col1, col2, col3 = st.columns(
+                3
+            )
+
+            # STEP 10.2 UI CLEANUP — snapshot deduplicated
+            with col1:
+                st.caption(
+                    "Feature snapshot wordt via de primaire "
+                    "snapshot-control hierboven uitgevoerd."
                 )
 
-                st.rerun()
+            with col2:
+
+                if st.button(
+                    "Maak registry eligible",
+                    key="readiness_registry_update",
+                ):
+
+                    try:
+
+                        registry_result = (
+                            sync_event_registry(source_eligible=canonical_build_prediction_readiness_report(selected_year, selected_slug).source_eligible, year=selected_year, gp_slug=selected_slug)
+                        )
+
+                    except Exception as exc:
+
+                        st.error(
+                            str(exc)
+                        )
+
+                    else:
+
+                        if (
+                            registry_result.registry_eligible
+                            == 1
+                        ):
+
+                            st.success(
+                                "Registry eligible."
+                            )
+
+                        else:
+
+                            st.warning(
+                                registry_state_message(registry_result)
+                            )
+
+                        st.rerun()
+
+            with col3:
+
+                if st.button(
+                    "Refresh readiness",
+                    key="readiness_refresh",
+                ):
+
+                    st.rerun()
+
+            st.info(
+                "Andere herstelacties: "
+                "Event timing → Nieuwe GP; "
+                "RecordLap / layout / identity → Circuit & regime; "
+                "weather → Race Weather; "
+                "plausibility → race-context plausibility."
+            )
+
+            # ----------------------------------------------------
+            # Definitieve prediction_ready bevestiging
+            # ----------------------------------------------------
+            if all_ready:
+
+                st.success(
+                    "✅ Alle prediction-readiness gates zijn groen."
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ prediction_ready blijft geblokkeerd "
+                    "tot alle gates groen zijn."
+                )
+
+            confirm_ready = st.button(
+                "Bevestig prediction_ready",
+                key="confirm_prediction_ready_button",
+                disabled=not all_ready,
+            )
+
+            if confirm_ready:
+
+                try:
+
+                    result = (
+                        prepare_prediction_ready(
+                            year=selected_year,
+                            gp_slug=selected_slug,
+                        )
+                    )
+
+                except Exception as exc:
+
+                    st.error(
+                        "prediction_ready kon niet worden bevestigd."
+                    )
+
+                    with st.expander(
+                        "Technische details",
+                        expanded=False,
+                    ):
+                        st.code(
+                            str(exc)
+                        )
+
+                else:
+
+                    st.success(
+                        "RaceStatus succesvol naar prediction_ready gezet "
+                        "in df_test en df_overview."
+                    )
+
+                    st.write(
+                        "RegistryEligible:",
+                        result.registry_eligible,
+                    )
+
+                    st.rerun()
 
 
 
